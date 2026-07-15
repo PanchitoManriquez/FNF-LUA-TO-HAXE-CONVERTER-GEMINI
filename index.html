@@ -3,37 +3,311 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Conversor FNF: Psych a V-Slice + IA</title>
+    <title>FNF Coder AI - V-Slice Assistant</title>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-base: #0b0c10;
-            --bg-gradient: linear-gradient(135deg, #0b0c10 0%, #171d24 100%);
-            --panel-bg: #151a21;
-            --neon-cyan: #66fcf1;
-            --neon-blue: #45a29e;
-            --neon-purple: #c700ff;
-            --neon-pink: #ff007f;
+            --bg-base: #090a0f;
+            --panel-bg: #11141d;
+            --neon-cyan: #00f0ff;
+            --neon-pink: #ff0055;
+            --neon-yellow: #ffea00;
             --text-main: #e2e8f0;
-            --text-muted: #8b9bb4;
-            --success: #4ade80;
-            --danger: #ff4c4c;
-            --chat-bg: #0f141a;
+            --chat-user: #1a2332;
+            --chat-ai: #1c1524;
+            --border-glow: 0 0 10px rgba(0, 240, 255, 0.3);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: 'Rajdhani', sans-serif;
-            background: var(--bg-gradient);
-            background-attachment: fixed;
+            background-color: var(--bg-base);
+            background-image: radial-gradient(circle at 50% 0%, #1a1b26 0%, #090a0f 100%);
             color: var(--text-main);
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 15px;
         }
+
+        /* HEADER & API KEY */
+        header {
+            width: 100%; max-width: 900px; padding: 15px;
+            display: flex; flex-direction: column; gap: 10px;
+            border-bottom: 2px solid var(--neon-cyan);
+            background: rgba(17, 20, 29, 0.8);
+            box-shadow: var(--border-glow);
+            z-index: 10;
+        }
+
+        .header-title {
+            font-size: 1.8rem; font-weight: 700; color: var(--neon-yellow);
+            text-transform: uppercase; letter-spacing: 1px;
+            text-align: center; text-shadow: 0 0 5px rgba(255,234,0,0.5);
+        }
+
+        .api-row { display: flex; gap: 10px; }
+        input[type="password"] {
+            flex-grow: 1; padding: 10px; border-radius: 4px;
+            border: 1px solid var(--neon-cyan); background: #000; color: #fff;
+            font-family: 'Fira Code', monospace; font-size: 0.9rem;
+        }
+        input[type="password"]:focus { outline: none; box-shadow: var(--border-glow); }
+        .api-btn {
+            background: var(--neon-cyan); color: #000; border: none; font-weight: bold;
+            padding: 0 15px; border-radius: 4px; cursor: pointer; text-transform: uppercase;
+        }
+
+        /* ZONA DE CHAT */
+        .chat-container {
+            flex-grow: 1; width: 100%; max-width: 900px;
+            padding: 20px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 20px;
+            scroll-behavior: smooth;
+        }
+
+        .message { display: flex; gap: 15px; max-width: 90%; animation: fadeIn 0.3s ease; }
+        .message.user { align-self: flex-end; flex-direction: row-reverse; }
+        .message.ai { align-self: flex-start; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .avatar {
+            width: 50px; height: 50px; border-radius: 10px; object-fit: cover;
+            border: 2px solid; flex-shrink: 0;
+            background: #000;
+        }
+        .user .avatar { border-color: var(--neon-cyan); }
+        .ai .avatar { border-color: var(--neon-pink); }
+
+        .bubble {
+            padding: 15px; border-radius: 12px; font-size: 1.1rem; line-height: 1.5;
+            position: relative; word-wrap: break-word;
+        }
+        .user .bubble {
+            background: var(--chat-user); border: 1px solid var(--neon-cyan);
+            border-top-right-radius: 2px;
+        }
+        .ai .bubble {
+            background: var(--chat-ai); border: 1px solid var(--neon-pink);
+            border-top-left-radius: 2px;
+        }
+
+        pre {
+            background: #000; padding: 10px; border-radius: 6px; overflow-x: auto;
+            margin-top: 10px; border: 1px solid #333; font-family: 'Fira Code', monospace; font-size: 0.9rem;
+            color: var(--neon-cyan);
+        }
+
+        /* ZONA DE INPUT (ABAJO) */
+        .input-area {
+            width: 100%; max-width: 900px; padding: 15px;
+            background: var(--panel-bg); border-top: 2px solid var(--neon-pink);
+            display: flex; gap: 10px; align-items: flex-end;
+        }
+
+        .upload-btn {
+            width: 50px; height: 50px; border-radius: 50%; border: none;
+            background: var(--neon-yellow); color: #000; font-size: 2rem; font-weight: bold;
+            cursor: pointer; flex-shrink: 0; display: flex; justify-content: center; align-items: center;
+            transition: transform 0.2s;
+        }
+        .upload-btn:hover { transform: scale(1.1); }
+        .upload-btn:disabled { background: #555; cursor: not-allowed; transform: none; }
+
+        textarea {
+            flex-grow: 1; min-height: 50px; max-height: 150px; padding: 12px;
+            border-radius: 8px; border: 1px solid #444; background: #000; color: #fff;
+            font-family: 'Rajdhani', sans-serif; font-size: 1.1rem; resize: none; overflow-y: auto;
+        }
+        textarea:focus { outline: none; border-color: var(--neon-pink); }
+
+        .send-btn {
+            height: 50px; padding: 0 20px; border-radius: 8px; border: none;
+            background: var(--neon-pink); color: #fff; font-weight: bold; font-family: 'Rajdhani', sans-serif;
+            font-size: 1.2rem; cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .send-btn:disabled { background: #555; cursor: not-allowed; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">[ FNF CODER AI ]</div>
+        <div class="api-row">
+            <input type="password" id="apiKey" placeholder="> Pega tu API Key de Gemini aquí">
+            <button class="api-btn" onclick="guardarApiKey()">Guardar</button>
+        </div>
+    </header>
+
+    <div class="chat-container" id="chatHistory">
+        <div class="message ai">
+            <img src="1784089466821.png" alt="FNF Coder" class="avatar" onerror="this.src='https://via.placeholder.com/50?text=AI'">
+            <div class="bubble">
+                ¡Qué onda! Soy <strong>FNF Coder</strong>. 🎧💻<br><br>
+                Sube tu script de Lua usando el botón <strong>+</strong> o pregúntame lo que necesites sobre V-Slice, HScript o Haxe. ¡Vamos a programar!
+            </div>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <input type="file" id="fileInput" accept=".lua,.txt,.hxc,.hx" style="display: none;">
+        
+        <button class="upload-btn" id="plusBtn" title="Subir código">+</button>
+        
+        <textarea id="chatInput" placeholder="> Escribe aquí o sube un archivo..." rows="1" oninput="autoResize(this)" onkeypress="handleEnter(event)"></textarea>
+        
+        <button class="send-btn" id="sendBtn" onclick="enviarMensaje()">ENVIAR 🚀</button>
+    </div>
+
+    <script>
+        // --- API KEY CONFIG ---
+        document.addEventListener("DOMContentLoaded", function() {
+            var savedKey = localStorage.getItem('fnf_gemini_api_key');
+            if (savedKey) {
+                document.getElementById('apiKey').value = savedKey;
+            }
+        });
+
+        function guardarApiKey() {
+            var val = document.getElementById('apiKey').value.trim();
+            if (val) {
+                localStorage.setItem('fnf_gemini_api_key', val);
+                alert("💾 API Key guardada.");
+            }
+        }
+
+        // --- UI & CHAT LOGIC ---
+        const chatHistory = document.getElementById('chatHistory');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const plusBtn = document.getElementById('plusBtn');
+        const fileInput = document.getElementById('fileInput');
+
+        let internalContext = "Eres 'FNF Coder', un asistente experto en modding de Friday Night Funkin' V-Slice y programación en Haxe/HScript. El usuario te hablará o te pasará código Lua de Psych Engine. Tu trabajo es convertir ese código a HScript (.hxc) listo para V-Slice o ayudarle a debugear. Usa formato markdown para el código y sé amigable, usa jerga gamer ocasionalmente.\n\n";
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                enviarMensaje();
+            }
+        }
+
+        // --- FILE UPLOAD LOGIC ---
+        plusBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const file = this.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    // Pre-llenar el textarea con un mensaje y el código
+                    chatInput.value = `Convierte este archivo (${file.name}) a V-Slice:\n\n\`\`\`lua\n${content}\n\`\`\``;
+                    autoResize(chatInput);
+                };
+                reader.readAsText(file);
+                // Reset input
+                fileInput.value = "";
+            }
+        });
+
+        // --- GEMINI API CALL ---
+        async function enviarMensaje() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const text = chatInput.value.trim();
+
+            if (!apiKey) { alert("⚠️ Necesitas poner tu API Key arriba."); return; }
+            if (!text) return;
+
+            // Añadir al chat (Usuario)
+            agregarMensaje("user", text);
+            chatInput.value = "";
+            chatInput.style.height = 'auto';
+            
+            // Estado de carga
+            sendBtn.disabled = true;
+            plusBtn.disabled = true;
+            sendBtn.innerHTML = "...";
+
+            // Preparar el prompt con el contexto
+            const promptFinal = internalContext + "Usuario dice:\n" + text;
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: promptFinal }] }] })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    let respuestaAI = data.candidates[0].content.parts[0].text;
+                    // Formatear markdown básico de bloques de código a HTML
+                    respuestaAI = formatMarkdown(respuestaAI);
+                    agregarMensaje("ai", respuestaAI);
+                    
+                    // Actualizar contexto corto para que no pierda el hilo pero no sature la memoria
+                    internalContext = "Eres FNF Coder. Recuerda que el usuario recién te dijo esto: " + text.substring(0, 200) + "... Y tú le respondiste con código.\n\n";
+                } else {
+                    agregarMensaje("ai", `❌ **Error de API:**<br>${data.error.message}`);
+                }
+            } catch (error) {
+                agregarMensaje("ai", `❌ **Error de Conexión:**<br>${error.message}`);
+            } finally {
+                sendBtn.disabled = false;
+                plusBtn.disabled = false;
+                sendBtn.innerHTML = "ENVIAR 🚀";
+            }
+        }
+
+        function agregarMensaje(tipo, htmlText) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${tipo}`;
+            
+            // Avatar (Si es AI usa la imagen de FNF Coder, si es User usa un placeholder)
+            const avatarSrc = tipo === 'ai' ? '1784089466821.png' : 'https://api.dicebear.com/7.x/pixel-art/svg?seed=User';
+            
+            msgDiv.innerHTML = `
+                <img src="${avatarSrc}" class="avatar" onerror="this.src='https://via.placeholder.com/50'">
+                <div class="bubble">${htmlText}</div>
+            `;
+            
+            chatHistory.appendChild(msgDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight; // Auto-scroll
+        }
+
+        // Función rudimentaria para cambiar ```codigo``` a <pre>codigo</pre>
+        function formatMarkdown(text) {
+            // Escapar HTML peligroso primero
+            text = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            
+            // Reemplazar bloques de código
+            text = text.replace(/```(.*?)\n([\s\S]*?)```/g, '<pre><strong>$1</strong>\n$2</pre>');
+            text = text.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>');
+            
+            // Reemplazar negritas
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Saltos de línea
+            text = text.replace(/\n/g, '<br>');
+            
+            return text;
+        }
+    </script>
+</body>
+</html>
 
         header { text-align: center; margin-bottom: 15px; width: 100%; }
 
