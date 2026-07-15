@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Básico FNF</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+
+    <h2>Modo de Prueba (Sin estilos)</h2>
+    
+    <p><b>1. Pon tu API Key:</b></p>
+    <input type="text" id="api" placeholder="API Key..." style="width: 100%; padding: 10px;">
+
+    <p><b>2. Sube tu .lua:</b></p>
+    <input type="file" id="archivo">
+
+    <br><br>
+    <button onclick="convertir()" style="padding: 15px; width: 100%; font-size: 18px;">CONVERTIR</button>
+
+    <p id="estado" style="font-weight: bold; color: blue;">Esperando...</p>
+
+    <textarea id="salida" rows="15" style="width: 100%;" readonly></textarea>
+
+    <script>
+        async function convertir() {
+            var api = document.getElementById('api').value.trim();
+            var archivoInput = document.getElementById('archivo');
+            var estado = document.getElementById('estado');
+            var salida = document.getElementById('salida');
+
+            if (!api) { alert("Falta la API Key"); return; }
+            if (!archivoInput.files || archivoInput.files.length === 0) { alert("Sube un archivo primero"); return; }
+
+            estado.innerText = "Leyendo archivo...";
+            estado.style.color = "orange";
+
+            var reader = new FileReader();
+            reader.onload = async function(e) {
+                var texto = e.target.result;
+                estado.innerText = "Enviando a la IA... (Esto puede tardar unos segundos)";
+                
+                var prompt = "Convierte este código Lua de FNF a Haxe V-Slice (.hxc). Solo devuelve el código.\n\n" + texto;
+
+                try {
+                    var res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + api, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
+
+                    var data = await res.json();
+
+                    if (res.ok) {
+                        salida.value = data.candidates[0].content.parts[0].text;
+                        estado.innerText = "¡Completado con éxito!";
+                        estado.style.color = "green";
+                    } else {
+                        salida.value = data.error.message;
+                        estado.innerText = "Error en la IA";
+                        estado.style.color = "red";
+                    }
+                } catch (error) {
+                    salida.value = error.message;
+                    estado.innerText = "Error de red";
+                    estado.style.color = "red";
+                }
+            };
+
+            reader.readAsText(archivoInput.files[0]);
+        }
+    </script>
+</body>
+</html>
